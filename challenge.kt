@@ -14,7 +14,7 @@ data class Parkable(
     val parkedTime: Long
         get() = (Calendar.getInstance().timeInMillis - checkInTime.timeInMillis) / 60000 //minutes in milliseconds
 
-    fun checkOutVehicle(plate:String) {
+    fun checkOutVehicle(plate:String): String {
 
         //evaluate check out result
         fun onSuccess(finalFee: Int): String {
@@ -27,33 +27,31 @@ data class Parkable(
 
         //check if there is a vehicle with given plate
         val vehiclesPlate = parking.vehicles.find{ it.plate == plate }
-        if (vehiclesPlate != null) {
+        return if (vehiclesPlate != null) {
             val finalFee = calculateFee(
                 vehicleType = vehiclesPlate.vehicleType,
                 parkedTime = vehiclesPlate.parkedTime.toInt(),
                 hasDiscountCard = !vehiclesPlate.discountCard.isNullOrEmpty())
 
-            //tell client their final fee
-            onSuccess(finalFee)
-
             //remove vehicle given plate
             parking.vehicles.remove(vehiclesPlate)
+
+            //tell client their final fee
+            onSuccess(finalFee)
         } else {
             //show error when vehicle's plate is not found
             onError()
         }
-
     }
-
 
     //calculate final fee after check out
     fun calculateFee(vehicleType: VehicleType, parkedTime:Int, hasDiscountCard:Boolean): Int{
         //fees
-        var finalFee = 0
-        var carFee = 20
-        var motorcycleFee = 15
-        var minibusFee = 25
-        var busFee = 30
+        var finalFee = 0.0
+        val carFee = 20.0
+        val motorcycleFee = 15.0
+        val minibusFee = 25.0
+        val busFee = 30.0
 
         if(parkedTime<121){
 
@@ -69,20 +67,23 @@ data class Parkable(
 
         } else {
             val extraFee = 5
-            //works but not with fraction of 15 minutes
             if(vehicleType.price == 20){
                 finalFee = carFee
-                finalFee += ((parkedTime - 120) / 15) * extraFee
+                var provisionalResult = ((parkedTime - 120) / 15.0)
+                finalFee += Math.ceil(provisionalResult) * extraFee
 
             } else if (vehicleType.price == 15){
                 finalFee = motorcycleFee
-                finalFee += ((parkedTime - 120) / 15) * extraFee
+                var provisionalResult = ((parkedTime - 120) / 15.0)
+                finalFee += Math.ceil(provisionalResult) * extraFee
             } else if (vehicleType.price == 25){
                 finalFee = minibusFee
-                finalFee += ((parkedTime - 120) / 15) * extraFee
+                var provisionalResult = ((parkedTime - 120) / 15.0)
+                finalFee += Math.ceil(provisionalResult) * extraFee
             } else {
                 finalFee = busFee
-                finalFee += ((parkedTime - 120) / 15) * extraFee
+                var provisionalResult = ((parkedTime - 120) / 15.0)
+                finalFee += Math.ceil(provisionalResult) * extraFee
             }
         }
 
@@ -90,12 +91,11 @@ data class Parkable(
         if(hasDiscountCard){
             val discount = (finalFee * 15) / 100
             finalFee = finalFee - discount
-            return finalFee
+            return finalFee.toInt()
         }
         //return final fee without discount
-        return finalFee
+        return finalFee.toInt()
     }
-
 }
 
 
@@ -144,9 +144,8 @@ data class Parking(val vehicles: MutableSet<Vehicle>){
             hasDiscountCard = !vehicle.discountCard.isNullOrEmpty())
         revenue = revenue.copy(countVehiclesCheckedOut, totalRevenue)
 
-
-        var revenueCountVehicles = revenue.first
-        var revenueTotalAmount = revenue.second
+        val revenueCountVehicles = revenue.first
+        val revenueTotalAmount = revenue.second
 
         return "$revenueCountVehicles vehicles have checked out and have earnings of $revenueTotalAmount"
     }
@@ -255,10 +254,17 @@ fun main(){
     println(" ")
     val bus46 = Vehicle("FGFGBASC4", VehicleType.BUS, Calendar.getInstance())
     var parkable = Parkable(bus46, java.util.Calendar.getInstance(),parking)
-    println("Check to see calculate Average Minibus Fee: "+ parkable.calculateFee(vehicleType = VehicleType.MINIBUS,parkedTime = 120,hasDiscountCard = false))
-    println("Check to see calculate Average Minibus Fee with discount: "+ parkable.calculateFee(vehicleType = VehicleType.MINIBUS,parkedTime = 120,hasDiscountCard = true))
-    println("Check to see calculate Average Car Fee: "+ parkable.calculateFee(vehicleType = VehicleType.CAR,parkedTime = 120,hasDiscountCard = false))
+    println("Check to see calculate Average Time Minibus Fee: "+ parkable.calculateFee(vehicleType = VehicleType.MINIBUS,parkedTime = 120,hasDiscountCard = false))
+    println("Check to see calculate Average Time Minibus Fee with discount: "+ parkable.calculateFee(vehicleType = VehicleType.MINIBUS,parkedTime = 120,hasDiscountCard = true))
+    println("Check to see calculate 2:05 Car Fee: "+ parkable.calculateFee(vehicleType = VehicleType.CAR,parkedTime = 125,hasDiscountCard = false))
     println("Check to see calculate 2:30hs Bus Fee: "+ parkable.calculateFee(vehicleType = VehicleType.BUS,parkedTime = 150,hasDiscountCard = false))
+
+    //check check out
+    println(" ")
+    println("Check check out for average time car with discount: " + parkable.checkOutVehicle("34234GFF"))
+    println("Check check out for average time bus: " + parkable.checkOutVehicle("DFD3345"))
+    println("Check check out for non existing vehicle: " + parkable.checkOutVehicle("AAAASFDS"))
+    println("Check check out for average time minibus with discount: " + parkable.checkOutVehicle(minibus2.plate))
 
     //check if list works
     println(" ")
@@ -269,6 +275,6 @@ fun main(){
     println(" ")
     val car22 = Vehicle("FGASFGBC4", VehicleType.CAR, Calendar.getInstance())
     val car23 = Vehicle("FDDGFGBC4", VehicleType.CAR, Calendar.getInstance(), "DISCOUNT_CARD_20")
-    println("Check revenue: " + parking.revenue(car22))
-    println("Check revenue: " + parking.revenue(car23))
+    println("Check revenue for average time car: " + parking.revenue(car22))
+    println("Check revenue for average time car with discount: " + parking.revenue(car23))
 }
